@@ -1,1 +1,1 @@
-custom_parallax
+noita-parallax

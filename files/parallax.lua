@@ -1,4 +1,4 @@
-Inject = dofile_once("mods/custom_parallax/files/inject.lua")
+Inject = dofile_once("mods/noita-parallax/files/inject.lua")
 
 SetContent = ModTextFileSetContent
 GetContent = ModTextFileGetContent

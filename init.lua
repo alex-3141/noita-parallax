@@ -1,4 +1,4 @@
-Parallax = dofile( "mods/custom_parallax/files/parallax.lua" )
+Parallax = dofile( "mods/noita-parallax/files/parallax.lua" )
 
 function OnModInit()
 
@@ -10,25 +10,25 @@ function OnModInit()
   -- Re-creation of default background. Omitted fields will use default values.
   -- See bottom of parallax.lua for details on fields.
   Parallax.layers={
-    {id = "clound1", path = "mods/custom_parallax/files/tex/demo/parallax_clounds_01.png",
+    {id = "clound1", path = "mods/noita-parallax/files/tex/demo/parallax_clounds_01.png",
       offset_y = 0.3894, depth = 0.94, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.CLOUDS_1
     },
-    {id = "mountain02", path = "mods/custom_parallax/files/tex/demo/parallax_mountains_02.png",
+    {id = "mountain02", path = "mods/noita-parallax/files/tex/demo/parallax_mountains_02.png",
       offset_y = 0.3894,  depth = 0.9245, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_2,
     },
-    {id = "clound2", path = "mods/custom_parallax/files/tex/demo/parallax_clounds_02.png",
+    {id = "clound2", path = "mods/noita-parallax/files/tex/demo/parallax_clounds_02.png",
       offset_y = 0.3894, depth = 0.9, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.CLOUDS_2
     },
-    {id = "mountainLayer2", path = "mods/custom_parallax/files/tex/demo/parallax_mountains_layer_02.png",
+    {id = "mountainLayer2", path = "mods/noita-parallax/files/tex/demo/parallax_mountains_layer_02.png",
       offset_y = 0.37569,  depth = 0.87918, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_1_BACK
     },
-    {id = "mountainLayer1", path = "mods/custom_parallax/files/tex/demo/parallax_mountains_layer_01.png",
+    {id = "mountainLayer1", path = "mods/noita-parallax/files/tex/demo/parallax_mountains_layer_01.png",
       offset_y = 0.37569,  depth = 0.87918, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_1_HIGHLIGHT
     },
   }
 
   -- Need to supply sky textures file
-  Parallax.sky.path = "mods/custom_parallax/files/tex/sky_colors_default.png"
+  Parallax.sky.path = "mods/noita-parallax/files/tex/sky_colors_default.png"
 
   Parallax.pushTextures() -- Binds textures. Only able to be called during init.
   Parallax.init() -- Compile shader. Can be called at any time, but may stutter the game for a moment.
