@@ -16,11 +16,18 @@ local function lerp(a, b, t)
   return a + (b - a) * t
 end
 
+-- LERP
 local function lerpColor(a, b, t)
   local r = lerp(a[1], b[1], t)
   local g = lerp(a[2], b[2], t)
   local b = lerp(a[3], b[3], t)
   return {r/255, g/255, b/255}
+end
+
+-- Smoothstep
+local function smoothstep(a, b, t)
+  t = t * t * (3.0 - 2.0 * t)
+  return lerpColor(a, b, t)
 end
 
 local function getDynamicColor(colors, time)
@@ -36,8 +43,13 @@ local function getDynamicColor(colors, time)
     i = i + 1
   end
 
-  local color = lerpColor(colors[i].c, colors[i % #colors + 1].c, t / colors[i].d)
-  return color
+  if colors[i].i == Parallax.INTERP.SMOOTHSTEP then
+    return smoothstep(colors[i].c, colors[i % #colors + 1].c, t / colors[i].d)
+  elseif colors[i].i == Parallax.INTERP.NONE then
+    return colors[i].c
+  else
+    return lerpColor(colors[i].c, colors[i % #colors + 1].c, t / colors[i].d)
+  end
 end
 
 local function getSkyGradientColors(time)
@@ -258,6 +270,11 @@ Parallax = {
     TEXTURE = 0,
     DYNAMIC = 1,
   },
+  INTERP = {
+    LINEAR = 0,
+    SMOOTHSTEP = 1,
+    NONE = 2
+  },
   -- These are the sky colors that the game uses by default, and serve as a good base to build off of or just use directly
   -- These indexes match up to sky_colors_deafult.png. It was derived from sky_colors.png in data/weather_gfx/
   SKY_DEFAULT = {
@@ -333,23 +350,23 @@ Parallax = {
 
 Parallax.sky.gradient_texture = {Parallax.SKY_DEFAULT.BACKGROUND_1, Parallax.SKY_DEFAULT.BACKGROUND_2}
 
--- tex_w          | automaticaly set to texture width
--- tex_h          | automatically set to texture height
--- scale          | Layer scale
--- alpha          | Layer transparrency
--- offset_x       | Layer horizontal offset
--- offset_y       | Layer vertical offset
--- depth          | Parallax depth. 0 = infinite distance, 1 = same as foreground
--- sky_blend      | How much the sky color should blend with the layer. 0 = no blending, 1 = full blending
--- speed_x        | Automatic horizontal movement
--- speed_y        | Automatic vertical movement
--- min_y          | Keep layers above this y position (normalized screen position)
--- max_y          | Keep layers below this y position (normalized screen position)
--- sky_index      | Index of the sky color to use
--- sky_source     | Where to get the sky color from. 0 = texture, 1 = dynamic. Can be a mix, eg. 0.5. Dynamic colors can be set via Parallax.sky.dynamic_colors
--- alpha_index    | Index of the alpha color to use. Pulls from the same list as sky_index
--- alpha_source   | Where to get the alpha color from. 0 = texture, 1 = dynamic. Can be a mix, eg. 0.5
--- alpha_blend    | How much the alpha color should blend with the layer. 0 = no blending, 1 = full blending. Dynamic colors can be set via Parallax.sky.dynamic_colors
+-- tex_w            | automaticaly set to texture width
+-- tex_h            | automatically set to texture height
+-- scale            | Layer scale
+-- alpha            | Layer transparrency
+-- offset_x         | Layer horizontal offset
+-- offset_y         | Layer vertical offset
+-- depth            | Parallax depth. 0 = infinite distance, 1 = same as foreground
+-- sky_blend        | How much the sky color should blend with the layer. 0 = no blending, 1 = full blending
+-- speed_x          | Automatic horizontal movement
+-- speed_y          | Automatic vertical movement
+-- min_y            | Keep layers above this y position (normalized screen position)
+-- max_y            | Keep layers below this y position (normalized screen position)
+-- sky_index        | Index of the sky color to use
+-- sky_source       | Where to get the sky color from. 0 = texture, 1 = dynamic. Can be a mix, eg. 0.5. Dynamic colors can be set via Parallax.sky.dynamic_colors
+-- alpha_index      | Index of the alpha color to use. Pulls from the same list as sky_index
+-- alpha_source     | Where to get the alpha color from. 0 = texture, 1 = dynamic. Can be a mix, eg. 0.5
+-- alpha_blend      | How much the alpha color should blend with the layer. 0 = no blending, 1 = full blending. Dynamic colors can be set via Parallax.sky.dynamic_colors
 Parallax.layer_defaults = {
   tex_w = 0, tex_h = 0,
   scale = 1.0, alpha = 1, offset_x = 0, offset_y = 0, depth = 0, sky_blend = 0.0, speed_x = 0, speed_y = 0, min_y = -9999999, max_y = 9999999,
