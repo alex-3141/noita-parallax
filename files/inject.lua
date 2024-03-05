@@ -9,19 +9,26 @@ local inject = {
     pattern = "gl_TexCoord%[0%]",
     replacement = "tex_coord_"
   },
-  static_uniforms = {
+  global_uniforms = {
     pattern = utilities,
     replacement = [[
 
-      uniform sampler2D tex_parallax_sky;
       uniform vec4 parallax_world_state;
-      uniform vec4 parallax_sky_gradient;
-      uniform vec4 parallax_sky_gradient_index;
-      uniform vec4 parallax_sky_gradient_color_1;
-      uniform vec4 parallax_sky_gradient_color_2;
+      uniform sampler2D tex_parallax_sky_A;
+      uniform sampler2D tex_parallax_sky_B;
     ]]
   },
-  dynamic_uniforms = {
+  sky_uniforms = {
+    pattern = utilities,
+    replacement = [[
+
+      uniform vec4 parallax_sky_gradient_%s;
+      uniform vec4 parallax_sky_gradient_index_%s;
+      uniform vec4 parallax_sky_gradient_color_%s_1;
+      uniform vec4 parallax_sky_gradient_color_%s_2;
+    ]]
+  },
+  layer_uniforms = {
     pattern = utilities,
     replacement = [[
 
@@ -46,14 +53,14 @@ local inject = {
         return uv;
       }
 
-      vec3 get_sky_color(float index){
-        float texel_height = textureSize(tex_parallax_sky, 0).y;
+      vec3 get_sky_color(sampler2D tex, float index){
+        float texel_height = textureSize(tex, 0).y;
         float sample_height = 1.5 + (index - 1.0) * 3.0;
         vec2 uv = vec2(parallax_world_state.x, sample_height / texel_height);
-        return texture2D(tex_parallax_sky, uv).rgb;
+        return texture2D(tex, uv).rgb;
       }
 
-      vec4 get_layer_color(vec2 uv, sampler2D tex, vec4 values_1, vec4 values_2, vec4 values_3, vec4 values_4, vec4 dynamic_sky_color, vec4 dynamic_alpha_color){
+      vec4 get_layer_color(vec2 uv, sampler2D tex, sampler2D tex_sky, vec4 values_1, vec4 values_2, vec4 values_3, vec4 values_4, vec4 dynamic_sky_color, vec4 dynamic_alpha_color){
         float viewport_aspect =  world_viewport_size.y/world_viewport_size.x;
         vec2 texture_size_texels = textureSize(tex, 0).xy;
         float texture_aspect = texture_size_texels.y / texture_size_texels.x;
@@ -97,9 +104,9 @@ local inject = {
         vec4 color = texture2D(tex, uv);
       
         color.a *= values_1.y; 	// Apply alpha
-        vec3 sky_color = get_sky_color(values_3.x); 	// Get sky texture color
+        vec3 sky_color = get_sky_color(tex_sky, values_3.x); 	// Get sky texture color
         sky_color = mix(sky_color, dynamic_sky_color.rgb, values_3.y); 	// Mix with dynamic color
-        vec3 alpha_color = get_sky_color(values_4.y); 	// Get alpha color
+        vec3 alpha_color = get_sky_color(tex_sky, values_4.y); 	// Get alpha color
         alpha_color = mix(alpha_color, dynamic_alpha_color.rgb, values_4.z); 	// Mix with dynamic alpha color
         float luminosity = sqrt(min(1.0, dot(alpha_color, vec3(0.299, 0.587, 0.114) * 1.0))); 	// Calculate luminosity for the alpha blend
         vec3 colorBlend = mix(color.rgb, sky_color, values_2.y); 	// Calculate color blend
@@ -117,17 +124,34 @@ local inject = {
         return color;
       }
 
-      vec3 get_sky_gradient(){
-        vec3 sky_color_1 = get_sky_color(parallax_sky_gradient_index.x);
-        vec3 sky_color_2 = get_sky_color(parallax_sky_gradient_index.y);
-        vec3 color_texture = mix(sky_color_1, sky_color_2, smoothstep(parallax_sky_gradient.z, parallax_sky_gradient.w, tex_coord_.y));
-        vec3 color_dynamic = mix(parallax_sky_gradient_color_1.rgb, parallax_sky_gradient_color_2.rgb, smoothstep(parallax_sky_gradient.z, parallax_sky_gradient.w, tex_coord_.y));
-        return mix(color_texture, color_dynamic, parallax_sky_gradient.x);
+      vec3 get_sky_gradient(sampler2D tex_sky, vec4 sky_gradient_index, vec4 sky_gradient, vec4 sky_gradient_color_1, vec4 sky_gradient_color_2){
+        vec3 sky_color_1 = get_sky_color(tex_sky, sky_gradient_index.x);
+        vec3 sky_color_2 = get_sky_color(tex_sky, sky_gradient_index.y);
+        vec3 color_texture = mix(sky_color_1, sky_color_2, smoothstep(sky_gradient.z, sky_gradient.w, tex_coord_.y));
+        vec3 color_dynamic = mix(sky_gradient_color_1.rgb, sky_gradient_color_2.rgb, smoothstep(sky_gradient.z, sky_gradient.w, tex_coord_.y));
+        return mix(color_texture, color_dynamic, sky_gradient.x);
       }
-
-      vec3 get_background_color(vec2 uv){
+    ]]
+  },
+  bank_A = {
+    pattern = utilities,
+    replacement = [[
+      vec3 get_background_color_A(vec2 uv){
         uv.y = 1.0 - uv.y;
-        vec3 color = get_sky_gradient();
+        vec3 color = get_sky_gradient(tex_parallax_sky_A, parallax_sky_gradient_index_A, parallax_sky_gradient_A, parallax_sky_gradient_color_A_1, parallax_sky_gradient_color_A_2);
+
+        // PARALLAX_INJECT_LAYERS
+      
+        return color;
+      }
+    ]]
+  },
+  bank_B = {
+    pattern = utilities,
+    replacement = [[
+      vec3 get_background_color_B(vec2 uv){
+        uv.y = 1.0 - uv.y;
+        vec3 color = get_sky_gradient(tex_parallax_sky_B, parallax_sky_gradient_index_B, parallax_sky_gradient_B, parallax_sky_gradient_color_B_1, parallax_sky_gradient_color_B_2);
 
         // PARALLAX_INJECT_LAYERS
       
@@ -140,7 +164,9 @@ local inject = {
     replacement = [[
 
       vec3 bg_orig = texture2D(tex_bg, tex_coord).rgb;
-      vec3 new_bg = get_background_color(tex_coord);
+      vec3 new_bg_A = get_background_color_A(tex_coord);
+      vec3 new_bg_B = get_background_color_B(tex_coord);
+      vec3 new_bg = mix(new_bg_A, new_bg_B, parallax_world_state.z);
       vec3 color = mix(bg_orig, new_bg, parallax_world_state.y);
     ]]
   },
@@ -148,7 +174,7 @@ local inject = {
     pattern = "\n%s*// PARALLAX_INJECT_LAYERS",
     replacement = [[
 
-      vec4 layer_%s = get_layer_color(uv, tex_parallax_%s, parallax_%s_1, parallax_%s_2, parallax_%s_3, parallax_%s_4, parallax_sky_color_%s, parallax_alpha_color_%s);
+      vec4 layer_%s = get_layer_color(uv, tex_parallax_%s, tex_parallax_sky_%s, parallax_%s_1, parallax_%s_2, parallax_%s_3, parallax_%s_4, parallax_sky_color_%s, parallax_alpha_color_%s);
       color = mix(color, layer_%s.rgb, layer_%s.a);
     ]]
   },

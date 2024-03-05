@@ -3,8 +3,23 @@ Inject = dofile_once("mods/noita-parallax/files/inject.lua")
 SetContent = ModTextFileSetContent
 GetContent = ModTextFileGetContent
 
-local function getLayerById(id)
-  for i, layer in ipairs(Parallax.layers) do
+DEBUG = true
+DEBUUG_SHADER = false
+
+local function debugPrint(msg)
+  if DEBUG then
+    print("[DEBUG] " .. msg)
+  end
+end
+
+local function printTable(t)
+  for k, v in pairs(t) do
+    print(k, v)
+  end
+end
+
+local function getLayerById(bank, id)
+  for i, layer in ipairs(bank.layers) do
     if layer.id == id then
       return layer
     end
@@ -52,8 +67,8 @@ local function getDynamicColor(colors, time)
   end
 end
 
-local function getSkyGradientColors(time)
-  local sky = Parallax.sky
+local function getSkyGradientColors(bank, time)
+  local sky = bank.sky
   local colors1 = sky.gradient_dynamic_colors[1]
   local colors2 = sky.gradient_dynamic_colors[2]
 
@@ -63,86 +78,145 @@ local function getSkyGradientColors(time)
   return color1, color2
 end
 
-local function getSkyColor(index, time)
+local function getSkyColor(bank, index, time)
   -- Allow for negative indexes to count from the end
   if index < 0 then
     index = #Parallax.sky.dynamic_colors + index + 1
   end
-  if index > #Parallax.sky.dynamic_colors then
-    index = #Parallax.sky.dynamic_colors
+  if index > #bank.sky.dynamic_colors then
+    index = #bank.sky.dynamic_colors
   end
   if index < 1 then return {0, 0, 0} end
-  local colors = Parallax.sky.dynamic_colors[index]
+  local colors = bank.sky.dynamic_colors[index]
   return getDynamicColor(colors, time)
 end
 
 local function pushUniforms(time)
+  local char = Parallax.current_bank
+  local bank = Parallax.bank[char]
   local error_msg = ""
   local setUniform = GameSetPostFxParameter
 
-  setUniform( "parallax_world_state", time % 1, Parallax.enabled, 0.0, 0.0)
+  local function setLayerUniforms(bank, char)
+    if bank == nil then return end
+    for i, layer in ipairs(bank.layers) do
+
+      -- Use a metatable to supply default values for missing keys
+      local mt = {
+        __index = function(t, key)
+          return Parallax.layer_defaults[key]
+        end
+      }
   
-  for i, layer in ipairs(Parallax.layers) do
-
-    -- Use a metatable to supply default values for missing keys
-    local mt = {
-      __index = function(t, key)
-        return Parallax.layer_defaults[key]
+      setmetatable(layer, mt)
+  
+      local layer_error = false
+  
+      -- Unintended indexes should be made highly visible
+      local sky_index = layer.sky_index
+      local alpha_index = layer.alpha_index
+      local sky_tex_height = Parallax.tex[bank.sky.path].height
+  
+      if layer.sky_source == Parallax.SKY_SOURCE.DYNAMIC and math.abs(sky_index) > #bank.sky.dynamic_colors then
+        error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Dynamic sky index " .. tostring(sky_index) .. " is out of bounds. Max index is " .. tostring(#bank.sky.dynamic_colors) .. "\n"
+        layer_error = true
       end
-    }
-
-    setmetatable(layer, mt)
-
-    local layer_error = false
-
-    -- Unintended indexes should be made highly visible
-    local sky_index = layer.sky_index
-    local alpha_index = layer.alpha_index
-
-    if layer.sky_source == Parallax.SKY_SOURCE.DYNAMIC and math.abs(sky_index) > #Parallax.sky.dynamic_colors then
-      error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Dynamic sky index " .. tostring(sky_index) .. " is out of bounds. Max index is " .. tostring(#Parallax.sky.dynamic_colors) .. "\n"
-      layer_error = true
+  
+      if layer.sky_source == Parallax.SKY_SOURCE.TEXTURE and math.abs(sky_index) > sky_tex_height / 3 then
+        error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Texture sky index " .. tostring(sky_index) .. " is out of bounds. Max index is " .. tostring(sky_tex_height/ 3) .. " (image height " .. tostring(sky_tex_height) .. "px / 3)\n"
+        layer_error = true
+      end
+  
+      if layer.alpha_source == Parallax.SKY_SOURCE.DYNAMIC and math.abs(alpha_index) > #bank.sky.dynamic_colors then
+        error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Dynamic alpha index " .. tostring(alpha_index) .. " is out of bounds. Max index is " .. tostring(#bank.sky.dynamic_colors) .. "\n"
+        layer_error = true
+      end
+  
+      if layer.alpha_source == Parallax.SKY_SOURCE.TEXTURE and math.abs(alpha_index) > sky_tex_height / 3 then
+        error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Texture alpha index " .. tostring(alpha_index) .. " is out of bounds. Max index is " .. tostring(sky_tex_height / 3) .. " (image height " .. tostring(sky_tex_height) .. "px / 3)\n"
+        layer_error = true
+      end
+  
+  
+      local color = getSkyColor(bank, sky_index, time)
+      setUniform( "parallax_sky_color_"..char.."_"..i, color[1], color[2], color[3], 1.0)
+  
+      local alpha_color = getSkyColor(bank, alpha_index, time)
+      setUniform( "parallax_alpha_color_"..char.."_"..i, alpha_color[1], alpha_color[2], alpha_color[3], 1.0)
+  
+      local gradient_1, gradient_2 = getSkyGradientColors(bank, time)
+      
+      setUniform( "parallax_sky_gradient_color_"..char.."_1", gradient_1[1], gradient_1[2], gradient_1[3], 0.0)
+      setUniform( "parallax_sky_gradient_color_"..char.."_2", gradient_2[1], gradient_2[2], gradient_2[3], 0.0)
+  
+      setUniform( "parallax_sky_gradient_index_"..char, bank.sky.gradient_texture[1], bank.sky.gradient_texture[2], 0.0, 0.0)
+      setUniform( "parallax_sky_gradient_"..char, bank.sky.gradient_dynamic_enabled, 0.0, bank.sky.gradient_pos[1], bank.sky.gradient_pos[2])
+  
+      local error_color = 0
+      if layer_error and Parallax.HIGHLIGHT_ERRORS then error_color = math.floor((GameGetFrameNum() % 60) / 30) end
+  
+      setUniform( "parallax_"..char.."_"..i.."_1", layer.scale, layer.alpha, layer.offset_x, layer.offset_y )
+      setUniform( "parallax_"..char.."_"..i.."_2", layer.depth, layer.sky_blend, layer.speed_x, layer.speed_y )
+      setUniform( "parallax_"..char.."_"..i.."_3", layer.sky_index, layer.sky_source, layer.min_y, layer.max_y)
+      setUniform( "parallax_"..char.."_"..i.."_4", layer.alpha_blend, layer.alpha_index, layer.alpha_source, error_color) -- 4th param is for error state
+  
     end
-
-    if layer.sky_source == Parallax.SKY_SOURCE.TEXTURE and math.abs(sky_index) > Parallax.sky.h / 3 then
-      error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Texture sky index " .. tostring(sky_index) .. " is out of bounds. Max index is " .. tostring(Parallax.sky.h / 3) .. " (image height " .. tostring(Parallax.sky.h) .. "px / 3)\n"
-      layer_error = true
-    end
-
-    if layer.alpha_source == Parallax.SKY_SOURCE.DYNAMIC and math.abs(alpha_index) > #Parallax.sky.dynamic_colors then
-      error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Dynamic alpha index " .. tostring(alpha_index) .. " is out of bounds. Max index is " .. tostring(#Parallax.sky.dynamic_colors) .. "\n"
-      layer_error = true
-    end
-
-    if layer.alpha_source == Parallax.SKY_SOURCE.TEXTURE and math.abs(alpha_index) > Parallax.sky.h / 3 then
-      error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Texture alpha index " .. tostring(alpha_index) .. " is out of bounds. Max index is " .. tostring(Parallax.sky.h / 3) .. " (image height " .. tostring(Parallax.sky.h) .. "px / 3)\n"
-      layer_error = true
-    end
-
-
-    local color = getSkyColor(sky_index, time)
-    setUniform( "parallax_sky_color_"..i, color[1], color[2], color[3], 1.0)
-
-    local alpha_color = getSkyColor(alpha_index, time)
-    setUniform( "parallax_alpha_color_"..i, alpha_color[1], alpha_color[2], alpha_color[3], 1.0)
-
-    local gradient_1, gradient_2 = getSkyGradientColors(time)
-    
-    setUniform( "parallax_sky_gradient_color_1", gradient_1[1], gradient_1[2], gradient_1[3], 0.0)
-    setUniform( "parallax_sky_gradient_color_2", gradient_2[1], gradient_2[2], gradient_2[3], 0.0)
-
-    setUniform( "parallax_sky_gradient_index", Parallax.sky.gradient_texture[1], Parallax.sky.gradient_texture[2], 0.0, 0.0)
-    setUniform( "parallax_sky_gradient", Parallax.sky.gradient_dynamic_enabled, 0.0, Parallax.sky.gradient_pos[1], Parallax.sky.gradient_pos[2])
-
-    local error_color = 0
-    if layer_error and Parallax.HIGHLIGHT_ERRORS then error_color = math.floor((GameGetFrameNum() % 60) / 30) end
-
-    setUniform( "parallax_"..i.."_1", layer.scale, layer.alpha, layer.offset_x, layer.offset_y )
-    setUniform( "parallax_"..i.."_2", layer.depth, layer.sky_blend, layer.speed_x, layer.speed_y )
-    setUniform( "parallax_"..i.."_3", layer.sky_index, layer.sky_source, layer.min_y, layer.max_y)
-    setUniform( "parallax_"..i.."_4", layer.alpha_blend, layer.alpha_index, layer.alpha_source, error_color) -- 4th param is for error state
-
   end
+
+
+  setLayerUniforms(Parallax.bank.A, "A")
+  setLayerUniforms(Parallax.bank.B, "B")
+  
+
+  local tween = 0
+  local mix
+  if Parallax.tween_time > 0 then
+    tween = Parallax.tween_timer / Parallax.tween_time -- from 1 to 0
+  end
+
+  if Parallax.bank.A == nil and Parallax.bank.B == nil then
+    mix = 0
+    tween = 0
+  else
+    if Parallax.current_bank == "B" then
+      local from = Parallax.bank.A
+      local to = Parallax.bank.B
+      if from == nil then
+        -- from nil to B
+        mix = 1 - tween
+        tween = 1
+      else
+        if to == nil then
+          -- from A to nil
+          mix = tween
+          tween = 0
+        else
+          -- from A to B
+          tween = 1 - tween
+          mix = 1
+        end
+      end
+    elseif Parallax.current_bank == "A" then
+      local from = Parallax.bank.B
+      local to = Parallax.bank.A
+      if from == nil then
+        -- from nil to A
+        mix = 1 - tween
+        tween = 0
+      else
+        if to == nil then
+          -- from B to nil
+          mix = tween
+          tween = 1
+        else
+          -- from B to A
+          mix = 1
+        end
+      end
+    end
+  end
+
+  setUniform( "parallax_world_state", time % 1, mix, tween, 0.0)
 
   return error_msg
 end
@@ -158,13 +232,28 @@ local injectShaderCode = function()
   -- Patch
   post_final = post_final:gsub(Inject.patch.pattern, Inject.patch.replacement)
 
-  -- Uniforms
-  post_final = post_final:gsub(Inject.static_uniforms.pattern, Inject.static_uniforms.replacement .. "\n%1", 1)
+  -- Global Uniforms
+  post_final = post_final:gsub(Inject.global_uniforms.pattern, Inject.global_uniforms.replacement .. "\n%1", 1)
 
-  post_final = post_final:gsub(Inject.dynamic_uniforms.pattern, function(capture)
+  -- Sky Uniforms
+  post_final = post_final:gsub(Inject.sky_uniforms.pattern, function(capture)
+    local u = ""
+    local A = "A"
+    local B = "B"
+    u = u .. string.format(Inject.sky_uniforms.replacement, A, A, A, A)
+    u = u .. string.format(Inject.sky_uniforms.replacement, B, B, B, B)
+    u = u .. "\n" .. capture
+    return u
+  end)
+
+  -- Layer Uniforms
+  post_final = post_final:gsub(Inject.layer_uniforms.pattern, function(capture)
     local u = ""
     for i = 1, maxLayers do
-      u = u .. string.format(Inject.dynamic_uniforms.replacement, i, i, i, i, i, i, i)
+      local A = "A_" .. tostring(i) 
+      local B = "B_" .. tostring(i)
+      u = u .. string.format(Inject.layer_uniforms.replacement, A, A, A, A, A, A, A)
+      u = u .. string.format(Inject.layer_uniforms.replacement, B, B, B, B, B, B, B)
     end
     u = u .. "\n" .. capture
     return u
@@ -179,64 +268,121 @@ local injectShaderCode = function()
   -- Replace background
   post_final = post_final:gsub(Inject.replace_bg.pattern, Inject.replace_bg.replacement, 1)
 
-  -- Inject layers
+  -- Bank A
+  post_final = post_final:gsub(Inject.bank_A.pattern, Inject.bank_A.replacement  .. "\n%1", 1)
   post_final = post_final:gsub(Inject.layers.pattern, function()
     local l = ""
     for i = 1, maxLayers do
-      l = l .. string.format(Inject.layers.replacement, i, i, i, i, i, i, i, i, i, i)
+      local A = "A_" .. tostring(i)
+      l = l .. string.format(Inject.layers.replacement, A, A, "A", A, A, A, A, A, A, A, A)
     end
     l = l .. "\n"
     return l
   end)
 
+  -- Bank B
+  post_final = post_final:gsub(Inject.bank_B.pattern, Inject.bank_B.replacement  .. "\n%1", 1)
+  post_final = post_final:gsub(Inject.layers.pattern, function()
+    local l = ""
+    for i = 1, maxLayers do
+      local B = "B_" .. tostring(i)
+      l = l .. string.format(Inject.layers.replacement, B, B, "B", B, B, B, B, B, B, B, B)
+    end
+    l = l .. "\n"
+    return l
+  end)
+
+  if DEBUUG_SHADER then print(post_final) end
+
   -- Apply post_final
   SetContent("data/shaders/post_final.frag", post_final)
 end
 
-local pushTextures = function()
-  local makeEditable = ModImageMakeEditable
+local pushTextures = function(bank)
   local setTexture = GameSetPostFxTextureParameter
-  for i, layer in ipairs(Parallax.layers) do
-    -- Workaround: Call ModImageMakeEditable() on all images to ensure the same pixel format is used
-    local id, width, height = makeEditable( layer.path, 0, 0 )
+  local char = Parallax.current_bank
 
-    if id == 0 or id == nil then
-      error("Failed to load image: " .. layer.path)
+  if bank == nil then
+    for i = 1, Parallax.MAX_LAYERS do
+      setTexture( "tex_parallax_" .. char .. "_" .. i, "data/parallax_blank.png", Parallax.FILTER.BILINEAR, Parallax.WRAP.CLAMP, true )
+      debugPrint("[Parallax] Pushed texture: data/parallax_blank.png as tex_parallax_" .. char .. "_" .. i)
     end
+    setTexture( "tex_parallax_sky_" .. char, "data/parallax_fallback_sky.png", Parallax.FILTER.BILINEAR, Parallax.WRAP.REPEAT, true )
+    return
+  end
 
-    setTexture( "tex_parallax_"..i, layer.path, Parallax.FILTER.BILINEAR, Parallax.WRAP.CLAMP, false )
+  for i, layer in ipairs(bank.layers) do
+    setTexture( "tex_parallax_" .. char .. "_" .. i, layer.path, Parallax.FILTER.BILINEAR, Parallax.WRAP.CLAMP, true )
+    debugPrint("[Parallax] Pushed texture: " .. layer.path .. " as tex_parallax_" .. char .. "_" .. i)
+  end
 
-    print("[Parallax] Loaded texture: " .. layer.path .. " with id: " .. id .. " and size: " .. width .. "x" .. height)
+  -- Set the rest of the textures to blank
+  for i = #bank.layers + 1, Parallax.MAX_LAYERS do
+    setTexture( "tex_parallax_" .. char .. "_" .. i, "data/parallax_blank.png", Parallax.FILTER.BILINEAR, Parallax.WRAP.CLAMP, true )
+    debugPrint("[Parallax] Pushed texture: data/parallax_blank.png as tex_parallax_" .. char .. "_" .. i)
   end
 
   local missing_sky = false
-  -- Create a fallback sky texture if none is provided
-  if Parallax.sky.path == nil then
-    ModImageMakeEditable("data/parallax_fallback_sky.png", 1, 33)
-    --ModImageSetPixel("data/parallax_fallback_sky.png", 0, 0, 0xFF00FFFF)
-    Parallax.sky.path = "data/parallax_fallback_sky.png"
+
+  if bank.sky.path == nil or bank.sky.path == "" then
+    setTexture( "tex_parallax_sky_" .. char, "data/parallax_fallback_sky.png", Parallax.FILTER.BILINEAR, Parallax.WRAP.REPEAT, true )
     missing_sky = true
+  else
+    setTexture( "tex_parallax_sky_" .. char, bank.sky.path, Parallax.FILTER.BILINEAR, Parallax.WRAP.REPEAT, true )
   end
-
-  local id, width, height = makeEditable( Parallax.sky.path, 0, 0 )
-  if id == 0 or id == nil then
-    error("Failed to load sky image: " .. Parallax.sky.path)
-  end
-
-  Parallax.sky.w = width
-  Parallax.sky.h = height
-
-  setTexture( "tex_parallax_sky", Parallax.sky.path, Parallax.FILTER.BILINEAR, Parallax.WRAP.REPEAT, false )
   
   if missing_sky then
     error("No sky texture provided. Using fallback texture. Please set Parallax.sky.path to a valid texture path.")
   end
 end
 
+local function registerBlankTexture()
+  local id, width, height = ModImageMakeEditable( "data/parallax_blank.png", 1, 1 )
+  if id == 0 or id == nil then
+    error("Failed to generate blank image: data/parallax_blank.png")
+  end
+  Parallax.tex["data/parallax_blank.png"] = {id = id, width = width, height = height}
+  debugPrint("[Parallax] Registered texture: data/parallax_blank.png with id: " .. id .. " and size: " .. width .. "x" .. height)
+
+end
+
 local init = function()
+  registerBlankTexture()
   injectShaderCode()
 end
 
+local function registerTextures(textures)
+  local makeEditable = ModImageMakeEditable
+  for i, path in ipairs(textures) do
+    local id, width, height = makeEditable( path, 0, 0 )
+    if id == 0 or id == nil then
+      error("Failed to load image: " .. path)
+    end
+    Parallax.tex[path] = {id = id, width = width, height = height}
+    debugPrint("[Parallax] Registered texture: " .. path .. " with id: " .. id .. " and size: " .. width .. "x" .. height)
+  end
+end
+
+local push = function(data, tween)
+  if Parallax.current_bank == "B" then
+    Parallax.bank.A = data
+    Parallax.current_bank = "A"
+  else
+    Parallax.bank.B = data
+    Parallax.current_bank = "B"
+  end
+
+  if data ~= nil then
+    debugPrint("[Parallax] Pushing " .. data.id .." to bank " .. Parallax.current_bank)
+  end
+
+  pushTextures(data)
+
+  if tween == nil then tween = 0 end
+
+  Parallax.tween_time = tween
+  Parallax.tween_timer = tween
+end
 
 local update = function()
   local world_state_entity = GameGetWorldStateEntity()
@@ -245,14 +391,59 @@ local update = function()
   local day = ComponentGetValue2( world_state, "day_count" )
 
 
+  local bank = Parallax.bank[Parallax.current_bank]
+
+  if bank ~= nil and bank.update ~= nil and type(bank.update) == "function" then
+    bank.update(bank)
+  end
+
+  if Parallax.tween_timer > 0 then
+    Parallax.tween_timer = Parallax.tween_timer - 1
+  end
+
   local error_msg = pushUniforms(time + day)
   if error_msg ~= "" then
     print(error_msg)
   end
 end
 
+local registerLayers = function(num)
+  Parallax.MAX_LAYERS = math.max(Parallax.MAX_LAYERS, num)
+end
+
+local getBankTemplate = function()
+  return {
+    id = nil,
+    layers = {},
+    sky = {
+      w = 0,
+      h = 0,
+      path = nil,
+      dynamic_colors = {},
+      gradient_dynamic_enabled = 0,
+      gradient_pos = {0.6, 0.4},
+      gradient_texture = {1, 2},
+      gradient_dynamic_colors = {
+      {{c = {0,0,0}, d=1}},
+      {{c = {0,0,0}, d=1}},
+      },
+    },
+    state = {},
+    getLayerById = getLayerById,
+  }
+end
+
 Parallax = {
   enabled = 1.0,
+  -- banks are used to minimize texture swaps
+  bank = {
+    A = nil,
+    B = nil
+  },
+  current_bank = "B",
+  tween_time = 0,
+  tween_timer = 0,
+  tex = {},
   FILTER = {
     UNDEFINED = 0,
     BILINEAR = 1,
@@ -265,7 +456,7 @@ Parallax = {
     REPEAT = 3,
     MIRRORED_REPEAT = 4,
   },
-  MAX_LAYERS = 6,
+  MAX_LAYERS = 0,
   SKY_SOURCE = {
     TEXTURE = 0,
     DYNAMIC = 1,
@@ -291,64 +482,14 @@ Parallax = {
     STARS_ALPHA = 11,
   },
   HIGHLIGHT_ERRORS = true,
-  layers = {},
-  sky = {
-    h = 0,
-    w = 0,
-    path = nil,
-    -- Colors to use if dynamic sky colors is enabled
-    -- Each index is a list of colors to cycle through. d is the duration of each color measured in noita day cycles.
-    -- The last color will blend into the first color
-    -- This is the default behaviour for getSkyGradientColors(), but you can go even more custom if you want
-    -- This is the same list used by alpha colors if dynamic alpha colors are used, where the resultant luminocity is used
-    dynamic_colors = {
-      -- index 1
-      {
-        {c = {255,  0, 0}, d = 0.25},
-        {c = {0, 255, 0 }, d = 0.25},
-        {c = {0,  0,  255 }, d = 0.25},
-        {c = {255, 255, 255}, d = 0.25}
-      },
-      -- index 2
-      -- Durations dont have to sum to 1.0, and can be shorter or longer than an in-game day
-      {
-        {c = {255,  0, 0}, d = 0.001},
-        {c = {0, 0, 255 }, d = 0.005},
-      },
-      -- etc ...
-    },
-    -- Gradient colors are for the sky gradient that paints under all
-    -- 1.0 to use dynamic colors, 0.0 to use texture colors
-    gradient_dynamic_enabled = 0.0,
-    -- Position of gradient. 0.6 and 0.4 is the default used by the game
-    gradient_pos = { 0.6, 0.4},
-    -- texture indexes for gradient colors
-    gradient_texture = {1, 2},
-    -- Colors to use if dynamic sky gradient is enabled. Needs to be 2 colors
-    gradient_dynamic_colors = {
-      -- Color 1
-      {
-        {c = {255,  0, 0}, d = 0.25},
-        {c = {0, 255, 0 }, d = 0.25},
-        {c = {0,  0,  255 }, d = 0.25},
-        {c = {255, 255, 255}, d = 0.25}
-      },
-      -- Color 2
-      {
-        {c = {0,  255, 0}, d = 0.25},
-        {c = {0, 0, 255 }, d = 0.25},
-        {c = {255,  0,  0 }, d = 0.25},
-        {c = {0, 0, 0}, d = 0.25}
-      },
-    }
-  },
   update = update,
   pushTextures = pushTextures,
-  getLayerById = getLayerById,
+  registerTextures = registerTextures,
+  registerLayers = registerLayers, 
+  push = push,
   init = init,
+  getBankTemplate = getBankTemplate,
 }
-
-Parallax.sky.gradient_texture = {Parallax.SKY_DEFAULT.BACKGROUND_1, Parallax.SKY_DEFAULT.BACKGROUND_2}
 
 -- tex_w            | automaticaly set to texture width
 -- tex_h            | automatically set to texture height

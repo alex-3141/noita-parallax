@@ -1,32 +1,59 @@
-Parallax = dofile( "mods/noita-parallax/files/parallax.lua" )
+Parallax = dofile_once( "mods/noita-parallax/files/parallax.lua" )
 
 local demo_desert
 local demo_mountain
 
 function OnModInit()
 
-  -- Set maximum number of layers
-  -- More layers results in a longer compile time, and a small performance hit.
-  -- Shader will fail to compile if there are ~140 layers
-  Parallax.MAX_LAYERS = 10
+  -- Register the max number of layers you may need at once
+  Parallax.registerLayers(16)
 
-  -- Some demo backgrounds
 
-  -- demo_mountain() -- Re-creation of default background
-  demo_desert() -- Desert background with temple
+  -- All textures need to be registered during mod init
+  Parallax.registerTextures({
+    "mods/noita-parallax/files/tex/demo/parallax_clounds_01.png",
+    "mods/noita-parallax/files/tex/demo/parallax_clounds_02.png",
+    "mods/noita-parallax/files/tex/demo/parallax_mountains_02.png",
+    "mods/noita-parallax/files/tex/demo/parallax_mountains_layer_01.png",
+    "mods/noita-parallax/files/tex/demo/parallax_mountains_layer_02.png",
+    "mods/noita-parallax/files/tex/demo/dunes1.png",
+    "mods/noita-parallax/files/tex/demo/dunes2.png",
+    "mods/noita-parallax/files/tex/demo/temple.png",
+    "mods/noita-parallax/files/tex/demo/temple-glow.png",
+    "mods/noita-parallax/files/tex/demo/temple-antennas.png",
+    "mods/noita-parallax/files/tex/sky_colors_default.png",
+  })
 
-  -- Need to supply sky textures file
-  Parallax.sky.path = "mods/noita-parallax/files/tex/sky_colors_default.png"
+  
+  --demo_mountain()
 
-  Parallax.pushTextures() -- Binds textures. Only able to be called during init.
-  Parallax.init() -- Compile shader. Can be called at any time, but may stutter the game for a moment.
+  Parallax.init()
 end
 
 
+local function moveClouds(bank)
+  local world_state = EntityGetFirstComponent( GameGetWorldStateEntity(), "WorldStateComponent" )
+  local wind_speed = ComponentGetValue2( world_state, "wind_speed" )
+  local time_dt = ComponentGetValue2( world_state, "time_dt" )
+
+  if bank.state.cloundx1 ~= nil then
+    bank.state.cloundx1 = bank.state.cloundx1 - wind_speed * 0.000017 * time_dt
+    local clound1 = bank:getLayerById("clound1")
+    clound1.offset_x = bank.state.cloundx1
+  end
+
+  if bank.state.cloundx2 ~= nil then
+    bank.state.cloundx2 = bank.state.cloundx2 - wind_speed * 0.0000255 * time_dt
+    local clound2 = bank:getLayerById("clound2")
+    clound2.offset_x = bank.state.cloundx2
+  end
+end
 
 
 function demo_desert()
-  Parallax.layers = {
+  local desert = Parallax.getBankTemplate()
+  desert.id = "desert"
+  desert.layers = {
     {id = "clound1", path = "mods/noita-parallax/files/tex/demo/parallax_clounds_01.png",
       offset_y = 0.3894, depth = 0.94, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.CLOUDS_1
     },
@@ -48,10 +75,16 @@ function demo_desert()
     },
   }
 
+  -- State and update func for cloud positions
+  desert.state = { cloundx1 = 0 }
+  desert.update = moveClouds
+
+  desert.sky.path = "mods/noita-parallax/files/tex/sky_colors_default.png"
+
   -- Construct antenna blinking pattern, specifying no interpolation between colors
   -- As long as the total duration of the pattern adds to 1.0, it will sync with the day/night cycle
 
-  Parallax.sky.dynamic_colors[1] = {
+  desert.sky.dynamic_colors[1] = {
     {c = {0,  0,  0 }, d = 0.5, i = Parallax.INTERP.NONE},
   }
   local blink = {
@@ -72,19 +105,23 @@ function demo_desert()
 
   for i = 1, math.floor(blinks_per_night) do
     for j, v in ipairs(blink) do
-      table.insert(Parallax.sky.dynamic_colors[1], v)
+      table.insert(desert.sky.dynamic_colors[1], v)
     end
   end
 
   local last = {c = {0,  0,  0 }, d = 0.3, i = Parallax.INTERP.NONE}
   last.d = last.d + fract * blink_duration
 
-  table.insert(Parallax.sky.dynamic_colors[1], last)
+  table.insert(desert.sky.dynamic_colors[1], last)
+
+  Parallax.push(desert, 30)
 
 end
 
 function demo_mountain()
-  Parallax.layers={
+  local mountain = Parallax.getBankTemplate()
+  mountain.id = "mountain"
+  mountain.layers={
     {id = "clound1", path = "mods/noita-parallax/files/tex/demo/parallax_clounds_01.png",
       offset_y = 0.3894, depth = 0.94, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.CLOUDS_1
     },
@@ -101,19 +138,26 @@ function demo_mountain()
       offset_y = 0.37569,  depth = 0.87918, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_1_HIGHLIGHT
     },
   }
+  mountain.sky.path = "mods/noita-parallax/files/tex/sky_colors_default.png"
+  Parallax.push(mountain, 30)
 end
 
 
--- An example of how to modify parallax layers in real time
-Cloundx1 = 0
-Cloundx2 = 0
-local function moveClouds()
-  local world_state_entity = GameGetWorldStateEntity()
-  local world_state = EntityGetFirstComponent( world_state_entity, "WorldStateComponent" )
-  local wind_speed = ComponentGetValue2( world_state, "wind_speed" )
-  local time = ComponentGetValue2( world_state, "time" )
+function OnWorldPostUpdate()
+  local world_state = EntityGetFirstComponent( GameGetWorldStateEntity(), "WorldStateComponent" )
 
-  --GamePrint(tostring(time))
+  if InputIsKeyJustDown(47) then
+    demo_desert()
+  end
+
+  if InputIsKeyJustDown(48) then
+    demo_mountain()
+  end
+
+  if InputIsKeyJustDown(49) then
+    Parallax.push(nil, 30)
+  end
+
 
 
   if InputIsKeyDown(40) then
@@ -122,30 +166,10 @@ local function moveClouds()
     ComponentSetValue2( world_state, "time_dt", 1 )
   end
 
-
-
-  local time_dt = ComponentGetValue2( world_state, "time_dt" )
-
-  Cloundx1 = Cloundx1 - wind_speed * 0.000017 * time_dt
-  Cloundx2 = Cloundx2 - wind_speed * 0.0000255 * time_dt
-
-  local clound1 = Parallax.getLayerById("clound1")
-  local clound2 = Parallax.getLayerById("clound2")
-
-  -- Layers can also be accessed directly by index
-  if clound1 ~= nil then clound1.offset_x = Cloundx1 end
-  if clound2 ~= nil then clound2.offset_x = Cloundx2 end
-end
-
-
-
-function OnWorldPostUpdate()
   if Parallax ~= nil then
-
-    -- Move clouds based on wind speed
-    moveClouds()
-
-    -- Needs to be called once per frame
-    Parallax.update()
+    Parallax.update() -- Needs to be called once per frame
   end
 end
+
+
+
