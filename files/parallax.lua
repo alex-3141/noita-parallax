@@ -3,13 +3,17 @@ Inject = dofile_once("mods/noita-parallax/files/inject.lua")
 SetContent = ModTextFileSetContent
 GetContent = ModTextFileGetContent
 
-DEBUG = true
+DEBUG = false
 DEBUUG_SHADER = false
 
 local function debugPrint(msg)
   if DEBUG then
     print("[DEBUG] " .. msg)
   end
+end
+
+local function parallaxPrint(msg)
+  print("[Parallax] " .. msg)
 end
 
 local function printTable(t)
@@ -336,7 +340,10 @@ local pushTextures = function(bank)
 end
 
 local init = function()
+  if Parallax.initialized then return end
   injectShaderCode()
+  parallaxPrint(string.format("Parallax v%s.%s initialized", Parallax.version.major, Parallax.version.minor))
+  Parallax.initialized = true
 end
 
 local function registerTextures(textures)
@@ -357,7 +364,6 @@ local function registerTextures(textures)
     end
     Parallax.tex["data/parallax_fallback_sky.png"] = {id = id, width = math.huge, height = math.huge}
   end
-
 end
 
 local push = function(data, tween)
@@ -436,6 +442,7 @@ end
 
 Parallax = {
   enabled = 1.0,
+  initialized = false,
   version = {major = 0, minor = 2},
   last_frame = 0,
   -- banks are used to minimize texture swaps

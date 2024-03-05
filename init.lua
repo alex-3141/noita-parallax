@@ -5,11 +5,12 @@ local demo_mountain
 
 function OnModInit()
 
-  -- Register the max number of layers you may need at once
+  -- Register functions need to be called during OnModInit() or earlier
+
+  -- The max number of layers you may need at once
   Parallax.registerLayers(50)
 
-
-  -- All textures need to be registered during mod init
+  -- All textures need to be registered
   Parallax.registerTextures({
     "mods/noita-parallax/files/tex/demo/parallax_clounds_01.png",
     "mods/noita-parallax/files/tex/demo/parallax_clounds_02.png",
@@ -24,12 +25,11 @@ function OnModInit()
     "mods/noita-parallax/files/tex/sky_colors_default.png",
   })
 
-  
-  --demo_mountain()
-
-  Parallax.init()
 end
 
+function OnModPostInit()
+  Parallax.init() -- Needs to be called during OnModPostInit()
+end
 
 local function moveClouds(bank)
   local world_state = EntityGetFirstComponent( GameGetWorldStateEntity(), "WorldStateComponent" )
