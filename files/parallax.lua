@@ -441,6 +441,7 @@ end
 
 Parallax = {
   enabled = 1.0,
+  version = {major = 0, minor = 2},
   last_frame = 0,
   -- banks are used to minimize texture swaps
   bank = {
