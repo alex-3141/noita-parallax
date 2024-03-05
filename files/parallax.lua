@@ -335,18 +335,7 @@ local pushTextures = function(bank)
   end
 end
 
-local function registerBlankTexture()
-  local id, width, height = ModImageMakeEditable( "data/parallax_blank.png", 1, 1 )
-  if id == 0 or id == nil then
-    error("Failed to generate blank image: data/parallax_blank.png")
-  end
-  Parallax.tex["data/parallax_blank.png"] = {id = id, width = width, height = height}
-  debugPrint("[Parallax] Registered texture: data/parallax_blank.png with id: " .. id .. " and size: " .. width .. "x" .. height)
-
-end
-
 local init = function()
-  registerBlankTexture()
   injectShaderCode()
 end
 
