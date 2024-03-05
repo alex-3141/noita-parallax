@@ -385,6 +385,12 @@ local push = function(data, tween)
 end
 
 local update = function()
+  local frame = GameGetFrameNum()
+  if Parallax.last_frame == frame then return end
+  Parallax.last_frame = frame
+
+  print("Parallax update on frame " .. tostring(frame))
+
   local world_state_entity = GameGetWorldStateEntity()
   local world_state = EntityGetFirstComponent( world_state_entity, "WorldStateComponent" )
   local time = ComponentGetValue2( world_state, "time" )
@@ -435,6 +441,7 @@ end
 
 Parallax = {
   enabled = 1.0,
+  last_frame = 0,
   -- banks are used to minimize texture swaps
   bank = {
     A = nil,
