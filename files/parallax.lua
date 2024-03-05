@@ -3,7 +3,7 @@ Inject = dofile_once("mods/noita-parallax/files/inject.lua")
 SetContent = ModTextFileSetContent
 GetContent = ModTextFileGetContent
 
-DEBUG = false
+DEBUG = true
 DEBUUG_SHADER = false
 
 local function debugPrint(msg)
@@ -308,10 +308,6 @@ local pushTextures = function(bank)
   local char = Parallax.current_bank
 
   if bank == nil then
-    for i = 1, Parallax.MAX_LAYERS do
-      setTexture( "tex_parallax_" .. char .. "_" .. i, "data/parallax_blank.png", Parallax.FILTER.BILINEAR, Parallax.WRAP.CLAMP, true )
-      debugPrint("[Parallax] Pushed texture: data/parallax_blank.png as tex_parallax_" .. char .. "_" .. i)
-    end
     setTexture( "tex_parallax_sky_" .. char, "data/parallax_fallback_sky.png", Parallax.FILTER.BILINEAR, Parallax.WRAP.REPEAT, true )
     return
   end
@@ -319,12 +315,6 @@ local pushTextures = function(bank)
   for i, layer in ipairs(bank.layers) do
     setTexture( "tex_parallax_" .. char .. "_" .. i, layer.path, Parallax.FILTER.BILINEAR, Parallax.WRAP.CLAMP, true )
     debugPrint("[Parallax] Pushed texture: " .. layer.path .. " as tex_parallax_" .. char .. "_" .. i)
-  end
-
-  -- Set the rest of the textures to blank
-  for i = #bank.layers + 1, Parallax.MAX_LAYERS do
-    setTexture( "tex_parallax_" .. char .. "_" .. i, "data/parallax_blank.png", Parallax.FILTER.BILINEAR, Parallax.WRAP.CLAMP, true )
-    debugPrint("[Parallax] Pushed texture: data/parallax_blank.png as tex_parallax_" .. char .. "_" .. i)
   end
 
   local missing_sky = false
