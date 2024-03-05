@@ -113,7 +113,11 @@ local function pushUniforms(time)
       -- Unintended indexes should be made highly visible
       local sky_index = layer.sky_index
       local alpha_index = layer.alpha_index
-      local sky_tex_height = Parallax.tex[bank.sky.path].height
+      local sky_tex = Parallax.tex[bank.sky.path]
+      if sky_tex == nil or sky_tex == "" then
+        sky_tex = Parallax.tex["data/parallax_fallback_sky.png"]
+      end
+      local sky_tex_height = sky_tex.height
   
       if layer.sky_source == Parallax.SKY_SOURCE.DYNAMIC and math.abs(sky_index) > #bank.sky.dynamic_colors then
         error_msg = error_msg .. "Error in layer " ..  tostring(i) .. ": Dynamic sky index " .. tostring(sky_index) .. " is out of bounds. Max index is " .. tostring(#bank.sky.dynamic_colors) .. "\n"
@@ -327,7 +331,7 @@ local pushTextures = function(bank)
   end
   
   if missing_sky then
-    error("No sky texture provided. Using fallback texture. Please set Parallax.sky.path to a valid texture path.")
+    error("No sky texture provided. Using fallback texture. Please set sky.path to a valid texture path.")
   end
 end
 
@@ -356,6 +360,15 @@ local function registerTextures(textures)
     Parallax.tex[path] = {id = id, width = width, height = height}
     debugPrint("[Parallax] Registered texture: " .. path .. " with id: " .. id .. " and size: " .. width .. "x" .. height)
   end
+  -- Create a fallback sky texture
+  if Parallax.tex["data/parallax_fallback_sky.png"] == nil then
+    local id, width, height = makeEditable( "data/parallax_fallback_sky.png", 1, 1 )
+    if id == 0 or id == nil then
+      error("Failed to generate fallback sky image: data/parallax_fallback_sky.png")
+    end
+    Parallax.tex["data/parallax_fallback_sky.png"] = {id = id, width = math.huge, height = math.huge}
+  end
+
 end
 
 local push = function(data, tween)
