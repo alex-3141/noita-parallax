@@ -6,7 +6,7 @@ local demo_mountain
 function OnModInit()
 
   -- Register the max number of layers you may need at once
-  Parallax.registerLayers(16)
+  Parallax.registerLayers(50)
 
 
   -- All textures need to be registered during mod init

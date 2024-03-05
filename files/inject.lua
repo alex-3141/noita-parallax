@@ -14,6 +14,7 @@ local inject = {
     replacement = [[
 
       uniform vec4 parallax_world_state;
+      uniform vec4 parallax_layer_count;
       uniform sampler2D tex_parallax_sky_A;
       uniform sampler2D tex_parallax_sky_B;
     ]]
@@ -140,7 +141,10 @@ local inject = {
         uv.y = 1.0 - uv.y;
         vec3 color = get_sky_gradient(tex_parallax_sky_A, parallax_sky_gradient_index_A, parallax_sky_gradient_A, parallax_sky_gradient_color_A_1, parallax_sky_gradient_color_A_2);
 
+        while(true){
         // PARALLAX_INJECT_LAYERS
+        break;
+        }
       
         return color;
       }
@@ -153,7 +157,10 @@ local inject = {
         uv.y = 1.0 - uv.y;
         vec3 color = get_sky_gradient(tex_parallax_sky_B, parallax_sky_gradient_index_B, parallax_sky_gradient_B, parallax_sky_gradient_color_B_1, parallax_sky_gradient_color_B_2);
 
+        while(true){
         // PARALLAX_INJECT_LAYERS
+        break;
+        }
       
         return color;
       }
@@ -174,6 +181,7 @@ local inject = {
     pattern = "\n%s*// PARALLAX_INJECT_LAYERS",
     replacement = [[
 
+      if(parallax_layer_count.%s < %s.0) break;
       vec4 layer_%s = get_layer_color(uv, tex_parallax_%s, tex_parallax_sky_%s, parallax_%s_1, parallax_%s_2, parallax_%s_3, parallax_%s_4, parallax_sky_color_%s, parallax_alpha_color_%s);
       color = mix(color, layer_%s.rgb, layer_%s.a);
     ]]

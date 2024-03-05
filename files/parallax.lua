@@ -4,7 +4,7 @@ SetContent = ModTextFileSetContent
 GetContent = ModTextFileGetContent
 
 DEBUG = true
-DEBUUG_SHADER = false
+DEBUUG_SHADER = true
 
 local function debugPrint(msg)
   if DEBUG then
@@ -92,8 +92,6 @@ local function getSkyColor(bank, index, time)
 end
 
 local function pushUniforms(time)
-  local char = Parallax.current_bank
-  local bank = Parallax.bank[char]
   local error_msg = ""
   local setUniform = GameSetPostFxParameter
 
@@ -163,10 +161,8 @@ local function pushUniforms(time)
     end
   end
 
-
   setLayerUniforms(Parallax.bank.A, "A")
   setLayerUniforms(Parallax.bank.B, "B")
-  
 
   local tween = 0
   local mix
@@ -217,6 +213,10 @@ local function pushUniforms(time)
   end
 
   setUniform( "parallax_world_state", time % 1, mix, tween, 0.0)
+
+  local layer_count_A = Parallax.bank.A == nil and 0 or #Parallax.bank.A.layers
+  local layer_count_B = Parallax.bank.B == nil and 0 or #Parallax.bank.B.layers
+  setUniform("parallax_layer_count", layer_count_A, layer_count_B, 0.0, 0.0)
 
   return error_msg
 end
@@ -274,7 +274,7 @@ local injectShaderCode = function()
     local l = ""
     for i = 1, maxLayers do
       local A = "A_" .. tostring(i)
-      l = l .. string.format(Inject.layers.replacement, A, A, "A", A, A, A, A, A, A, A, A)
+      l = l .. string.format(Inject.layers.replacement, "x", tostring(i), A, A, "A", A, A, A, A, A, A, A, A)
     end
     l = l .. "\n"
     return l
@@ -286,7 +286,7 @@ local injectShaderCode = function()
     local l = ""
     for i = 1, maxLayers do
       local B = "B_" .. tostring(i)
-      l = l .. string.format(Inject.layers.replacement, B, B, "B", B, B, B, B, B, B, B, B)
+      l = l .. string.format(Inject.layers.replacement, "y", tostring(i), B, B, "B", B, B, B, B, B, B, B, B)
     end
     l = l .. "\n"
     return l
