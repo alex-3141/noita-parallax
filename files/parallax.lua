@@ -3,8 +3,8 @@ Inject = dofile_once("mods/noita-parallax/files/inject.lua")
 SetContent = ModTextFileSetContent
 GetContent = ModTextFileGetContent
 
-DEBUG = true
-DEBUUG_SHADER = true
+DEBUG = false
+DEBUUG_SHADER = false
 
 local function debugPrint(msg)
   if DEBUG then
@@ -161,9 +161,6 @@ local function pushUniforms(time)
     end
   end
 
-  setLayerUniforms(Parallax.bank.A, "A")
-  setLayerUniforms(Parallax.bank.B, "B")
-
   local tween = 0
   local mix
   if Parallax.tween_time > 0 then
@@ -210,6 +207,14 @@ local function pushUniforms(time)
         end
       end
     end
+  end
+
+  -- Only update what we need to
+  if tween ~= 1 then
+    setLayerUniforms(Parallax.bank.A, "A")
+  end
+  if tween ~= 0 then
+    setLayerUniforms(Parallax.bank.B, "B")
   end
 
   setUniform( "parallax_world_state", time % 1, mix, tween, 0.0)
@@ -388,8 +393,6 @@ local update = function()
   local frame = GameGetFrameNum()
   if Parallax.last_frame == frame then return end
   Parallax.last_frame = frame
-
-  print("Parallax update on frame " .. tostring(frame))
 
   local world_state_entity = GameGetWorldStateEntity()
   local world_state = EntityGetFirstComponent( world_state_entity, "WorldStateComponent" )
