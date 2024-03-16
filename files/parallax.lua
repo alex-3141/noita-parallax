@@ -524,7 +524,7 @@ end
 Parallax = {
   enabled = 1.0,
   initialized = false,
-  version = {major = 0, minor = 3},
+  version = {major = 1, minor = 0},
   last_frame = 0,
   bank = {
     A = nil,
