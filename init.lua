@@ -86,17 +86,17 @@ function demo_desert()
     offset_y = 0.3894,  depth = 0.9, sky_blend = 0.85, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_2,
     },
     {id = "temple", path = "mods/noita-parallax/files/tex/demo/temple.png",
-    offset_y = 0.3,  depth = 0.85, sky_blend = 0.7, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_2,
+    offset_y = 0.3, offset_x = -0.4,  depth = 0.85, sky_blend = 0.7, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_2,
     },
     {id = "temple-glow", path = "mods/noita-parallax/files/tex/demo/temple-glow.png",
-    offset_y = 0.3,  depth = 0.85, sky_blend = 0.0, alpha_blend = 1.0, alpha_index = Parallax.SKY_DEFAULT.STARS_ALPHA,
+    offset_y = 0.3, offset_x = -0.4, depth = 0.85, sky_blend = 0.0, alpha_blend = 1.0, alpha_index = Parallax.SKY_DEFAULT.STARS_ALPHA,
     },
     {id = "temple-antennas", path = "mods/noita-parallax/files/tex/demo/temple-antennas.png",
-    offset_y = 0.3,  depth = 0.85, sky_blend = 0.0, alpha_blend = 1.0,
+    offset_y = 0.3, offset_x = -0.4, depth = 0.85, sky_blend = 0.0, alpha_blend = 1.0,
     alpha_source = Parallax.SKY_SOURCE.DYNAMIC, alpha_index = 1, alpha = 0.5,
     },
     {id = "dunes2", path = "mods/noita-parallax/files/tex/demo/dunes2.png",
-    offset_y = 0.4894,  depth = 0.8, sky_blend = 0.7, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_2,
+    offset_y = 0.4894, offset_x = 0.5, depth = 0.8, sky_blend = 0.7, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_2,
     },
   }
 
@@ -148,13 +148,13 @@ function demo_mountain()
   mountain.id = "mountain"
   mountain.layers={
     {id = "clound1", path = "mods/noita-parallax/files/tex/demo/parallax_clounds_01.png",
-      offset_y = 0.3894, depth = 0.94, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.CLOUDS_1
+      offset_y = 0.3894, depth = 0.94, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.CLOUDS_1,
     },
     {id = "mountain02", path = "mods/noita-parallax/files/tex/demo/parallax_mountains_02.png",
       offset_y = 0.3894,  depth = 0.9245, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_2,
     },
     {id = "clound2", path = "mods/noita-parallax/files/tex/demo/parallax_clounds_02.png",
-      offset_y = 0.3894, depth = 0.9, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.CLOUDS_2
+      offset_y = 0.3894, depth = 0.9, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.CLOUDS_2,
     },
     {id = "mountainLayer2", path = "mods/noita-parallax/files/tex/demo/parallax_mountains_layer_02.png",
       offset_y = 0.37569,  depth = 0.87918, sky_blend = 1.0, sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_1_BACK
@@ -164,8 +164,8 @@ function demo_mountain()
     },
   }
   mountain.sky.path = "mods/noita-parallax/files/tex/sky_colors_default.png"
-  mountain.state = { cloundx1 = 0, cloundx2 = 0 }
-  mountain.update = moveClouds
+  --mountain.state = { cloundx1 = 0, cloundx2 = 0 }
+  --mountain.update = moveClouds
   Parallax.push(mountain, 30)
 end
 
