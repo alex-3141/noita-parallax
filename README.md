@@ -82,7 +82,7 @@ Banks are very customizable, see below for full documentation.
 
 ## Bank configuration
 
-The full bank configuration is as follows. Default values will be used for
+The full bank configuration is as follows. Default values will be used for unspecified values.
 ```lua
 bank = Parallax.getBankTemplate()
 
