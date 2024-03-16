@@ -71,7 +71,7 @@ mountain.layers = {
   },
 }
 mountain.sky.path = "mods/noita-parallax/files/tex/sky_colors_default.png"
-Parallax.push(mountain, 30)
+Parallax.push(mountain, 30) -- 30 frame blend between banks
 ```
 
 And thats it. Once the bank has been pushed, it will remain active until another bank is pushed, or the parallax is cleared.
