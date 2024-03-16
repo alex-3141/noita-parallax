@@ -1,4 +1,4 @@
-Parallax = dofile_once( "mods/noita-parallax/files/parallax.lua" )
+Parallax = dofile_once( "mods/noita-parallax/files/parallax.lua" ) -- Make sure parallax.lua and inject.lua are in the same folder
 
 local demo_desert
 local demo_mountain
@@ -7,8 +7,8 @@ function OnModInit()
 
   -- Register functions need to be called during OnModInit() or earlier
 
-  -- The max number of layers you may need at once
-  Parallax.registerLayers(50)
+  -- The max number of layers you may need at once. Higher values will impact startup times
+  Parallax.registerLayers(10)
 
   -- All textures need to be registered
   Parallax.registerTextures({
@@ -28,8 +28,33 @@ function OnModInit()
 end
 
 function OnModPostInit()
-  Parallax.init() -- Needs to be called during OnModPostInit()
+  Parallax.postInit() -- Needs to be called during OnModPostInit()
 end
+
+
+function OnWorldPostUpdate()
+  -- Some demo backgrounds to switch between.
+  -- 9 => Desert demo
+  -- 0 => Mountain demo
+  -- Minus => Clear custom background
+  -- Hold Enter to speed up time
+
+  if InputIsKeyJustDown(38) then demo_desert() end -- Key_9
+  if InputIsKeyJustDown(39) then demo_mountain() end -- Key_0
+  if InputIsKeyJustDown(45) then Parallax.push(nil, 30) end -- Key_MINUS
+
+  local world_state = EntityGetFirstComponent( GameGetWorldStateEntity(), "WorldStateComponent" )
+  if InputIsKeyDown(40) then
+    ComponentSetValue2( world_state, "time_dt", 100 )
+  else
+    ComponentSetValue2( world_state, "time_dt", 1 )
+  end
+
+  -- Parallax.update() needs to be called once per frame
+  if Parallax ~= nil then Parallax.update()  end
+end
+
+
 
 local function moveClouds(bank)
   local world_state = EntityGetFirstComponent( GameGetWorldStateEntity(), "WorldStateComponent" )
@@ -88,11 +113,11 @@ function demo_desert()
     {c = {0,  0,  0 }, d = 0.5, i = Parallax.INTERP.NONE},
   }
   local blink = {
-    {c = {255, 255, 255}, d = 0.0002, i = Parallax.INTERP.NONE},
-    {c = {0,  0,  0 }, d = 0.0002, i = Parallax.INTERP.NONE},
-    {c = {255, 255, 255}, d = 0.0002, i = Parallax.INTERP.NONE},
-    {c = {0,  0,  0 }, d = 0.0002, i = Parallax.INTERP.NONE},
-    {c = {0,  0,  0 }, d = 0.002, i = Parallax.INTERP.NONE},
+    {c = {255, 255, 255}, d = 0.00015, i = Parallax.INTERP.NONE},
+    {c = {0,  0,  0 }, d = 0.00015, i = Parallax.INTERP.NONE},
+    {c = {255, 255, 255}, d = 0.00015, i = Parallax.INTERP.NONE},
+    {c = {0,  0,  0 }, d = 0.00015, i = Parallax.INTERP.NONE},
+    {c = {0,  0,  0 }, d = 0.0022, i = Parallax.INTERP.NONE},
   }
   local blink_duration = 0
   for i, v in ipairs(blink) do
@@ -139,37 +164,9 @@ function demo_mountain()
     },
   }
   mountain.sky.path = "mods/noita-parallax/files/tex/sky_colors_default.png"
+  mountain.state = { cloundx1 = 0, cloundx2 = 0 }
+  mountain.update = moveClouds
   Parallax.push(mountain, 30)
 end
-
-
-function OnWorldPostUpdate()
-  local world_state = EntityGetFirstComponent( GameGetWorldStateEntity(), "WorldStateComponent" )
-
-  if InputIsKeyJustDown(47) then
-    demo_desert()
-  end
-
-  if InputIsKeyJustDown(48) then
-    demo_mountain()
-  end
-
-  if InputIsKeyJustDown(49) then
-    Parallax.push(nil, 30)
-  end
-
-
-
-  if InputIsKeyDown(40) then
-    ComponentSetValue2( world_state, "time_dt", 100 )
-  else
-    ComponentSetValue2( world_state, "time_dt", 1 )
-  end
-
-  if Parallax ~= nil then
-    Parallax.update() -- Needs to be called once per frame
-  end
-end
-
 
 
