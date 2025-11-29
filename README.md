@@ -106,8 +106,10 @@ bank.layers = {{       -- Table of layers in the bank. Numerical index
                        -- Dynamic colors can be set via Parallax.sky.dynamic_colors
   alpha_index = 1,     -- Index of the alpha color to use. Pulls from the same list as sky_index
   alpha_source = 1,    -- Where to get the alpha color from. 0 = texture, 1 = dynamic. Can be a mix (eg. 0.5)
-  alpha_blend = 0      -- How much the alpha color should blend with the layer. 0 = no blending, 1 = full blending. 
+  alpha_blend = 0,     -- How much the alpha color should blend with the layer. 0 = no blending, 1 = full blending. 
                        -- Dynamic colors can be set via Parallax.sky.dynamic_colors
+  wrap_x = true,       -- Whether the layer texture should wrap horizontally
+  wrap_y = false,      -- Whether the layer texture should wrap vertically
 }},
 
 bank.sky = {                      -- Information about the sky colors

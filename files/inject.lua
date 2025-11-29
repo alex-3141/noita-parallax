@@ -94,19 +94,24 @@ local inject = {
         // Correct for texture aspect
         uv.x *= texture_aspect;
         uv.x /= viewport_aspect;
+
+        bool wrap_x = (int(values_3.x) & 256) != 0;
+        bool wrap_y = (int(values_3.x) & 512) != 0;
         
-        uv.y = clamp(uv.y, 0.0, 1.0);
-        uv.x = fract(uv.x); // Repeat textures horizontally
-      
+        uv.x = wrap_x ? fract(uv.x) : clamp(uv.x, 0.0, 1.0);
+        uv.y = wrap_y ? fract(uv.y) : clamp(uv.y, 0.0, 1.0);
+
         // PARALLAX_INJECT_UV_POST
       
         uv = smooth_pixel(uv, texture_size_texels ); // Pixel art filter
         uv = clamp(uv, (1/texture_size_texels)*0.5, 1.0 - (1/texture_size_texels)*0.5); // Remove seams on repeating textures
       
         vec4 color = texture2D(tex, uv);
+
+        float sky_index = float(int(values_3.x) & 255);
       
         color.a *= values_1.y; 	// Apply alpha
-        vec3 sky_color = get_sky_color(tex_sky, values_3.x); 	// Get sky texture color
+        vec3 sky_color = get_sky_color(tex_sky, sky_index); 	// Get sky texture color
         sky_color = mix(sky_color, dynamic_sky_color.rgb, values_3.y); 	// Mix with dynamic color
         vec3 alpha_color = get_sky_color(tex_sky, values_4.y); 	// Get alpha color
         alpha_color = mix(alpha_color, dynamic_alpha_color.rgb, values_4.z); 	// Mix with dynamic alpha color

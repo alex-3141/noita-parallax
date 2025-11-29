@@ -221,12 +221,16 @@ local function pushUniforms(time, current_bank)
   
       local error_color = 0
       if layer_error and Parallax.HIGHLIGHT_ERRORS then error_color = math.floor((Parallax.GetFrame() % 60) / 30) end
-  
+
+      -- TODO: Overhaul data packing into single vec4
+      -- We have enough precision to represent integers up to 16777216 exactly
+      local bitfield = layer.sky_index + (layer.wrap_x and 1 or 0) * 256 + (layer.wrap_y and 1 or 0) * 512
+
       setUniform( "parallax_"..char.."_"..i.."_1", layer.scale, layer.alpha, layer.offset_x, layer.offset_y )
       setUniform( "parallax_"..char.."_"..i.."_2", layer.depth, layer.sky_blend, layer.speed_x, layer.speed_y )
-      setUniform( "parallax_"..char.."_"..i.."_3", layer.sky_index, layer.sky_source, layer.min_y, layer.max_y)
+      setUniform( "parallax_"..char.."_"..i.."_3", bitfield, layer.sky_source, layer.min_y, layer.max_y)
       setUniform( "parallax_"..char.."_"..i.."_4", layer.alpha_blend, layer.alpha_index, layer.alpha_source, error_color) -- 4th param is for error state
-  
+
     end
   end
 
@@ -599,11 +603,13 @@ Parallax = {
 -- alpha_index      | Index of the alpha color to use. Pulls from the same list as sky_index
 -- alpha_source     | Where to get the alpha color from. 0 = texture, 1 = dynamic. Can be a mix, eg. 0.5
 -- alpha_blend      | How much the alpha color should blend with the layer. 0 = no blending, 1 = full blending. Dynamic colors can be set via Parallax.sky.dynamic_colors
+-- wrap_x           | Whether the layer texture should wrap horizontally
+-- wrap_y           | Whether the layer texture should wrap vertically
 Parallax.layer_defaults = {
   tex_w = 0, tex_h = 0,
   scale = 1.0, alpha = 1, offset_x = 0, offset_y = 0, depth = 0, sky_blend = 0.0, speed_x = 0, speed_y = 0, min_y = -9999999, max_y = 9999999,
   sky_index = Parallax.SKY_DEFAULT.MOUNTAIN_2, sky_source = Parallax.SKY_SOURCE.TEXTURE, alpha_index = Parallax.SKY_DEFAULT.STARS_ALPHA, alpha_source = Parallax.SKY_SOURCE.TEXTURE,
-  alpha_blend = 0.0
+  alpha_blend = 0.0, wrap_x = true, wrap_y = false
 }
 -- Stash globals
 Parallax.SetContent = ModTextFileSetContent
