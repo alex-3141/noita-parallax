@@ -350,7 +350,7 @@ local postInit = function()
   local getSetting = Parallax.GetSetting
   if Parallax.initialized then return end
 
-  parallaxPrint(string.format("Parallax v%s.%s initialized", Parallax.version.major, Parallax.version.minor))
+  parallaxPrint(string.format("Parallax v%s initialized", Parallax.version))
 
   Parallax.initialized = true
   Parallax.MAX_LAYERS = getSetting("parallax_global.max_layers") or 0
@@ -528,7 +528,7 @@ end
 Parallax = {
   enabled = 1.0,
   initialized = false,
-  version = {major = 1, minor = 0},
+  version = '1.1.0',
   last_frame = 0,
   bank = {
     A = nil,
