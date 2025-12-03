@@ -4,9 +4,7 @@ A tool for creating parallax backgrounds in Noita.
 See ```init.lua``` for detailed examples.
 
 ## Install
-Place ```parallax.lua``` and ```inject.lua``` anywhere within your mod's files.
-
-**IMPORTANT:** Keep these files together in the same folder as they reference eachother.
+Place ```parallax.lua``` anywhere within your mod's files.
 
 ## Setup
 ### In your mod's ```init.lua```:
