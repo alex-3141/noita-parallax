@@ -1,8 +1,8 @@
-local utilities = "\n(//[%s-]+\n// utilities)"
+local utilities = "([^\r\n]*// utilities[^\r\n]*)"
 
 local inject = {
   version = {
-    pattern = "#version %d+",
+    pattern = "[^\r\n]*#version%s+%d+%s*[^\r\n]*",
     replacement = "#version 330"
   },
   patch = {
@@ -168,14 +168,14 @@ local inject = {
     ]]
   },
   replace_bg = {
-    pattern = "\n\tvec3 color%s*=%s*texture2D%(%s*tex_bg,%s*tex_coord%s*%)%.rgb;",
+    pattern = "([^\r\n]*vec3%s+color%s*=%s*[^\r\n]*)",
     replacement = [[
 
       vec3 bg_orig = texture2D(tex_bg, tex_coord).rgb;
       vec3 new_bg_A = get_background_color_A(tex_coord);
       vec3 new_bg_B = get_background_color_B(tex_coord);
       vec3 new_bg = mix(new_bg_A, new_bg_B, parallax_world_state.z);
-      vec3 color = mix(bg_orig, new_bg, parallax_world_state.y);
+      color = mix(bg_orig, new_bg, parallax_world_state.y);
     ]]
   },
   layers = {

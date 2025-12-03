@@ -251,41 +251,13 @@ local injectShaderCode = function()
   -- Patch
   post_final = post_final:gsub(inject.patch.pattern, inject.patch.replacement)
 
-  -- Global Uniforms
-  post_final = post_final:gsub(inject.global_uniforms.pattern, inject.global_uniforms.replacement .. "\n%1", 1)
-
-  -- Sky Uniforms
-  post_final = post_final:gsub(inject.sky_uniforms.pattern, function(capture)
-    local u = ""
-    local A = "A"
-    local B = "B"
-    u = u .. string.format(inject.sky_uniforms.replacement, A, A, A, A)
-    u = u .. string.format(inject.sky_uniforms.replacement, B, B, B, B)
-    u = u .. "\n" .. capture
-    return u
-  end)
-
-  -- Layer Uniforms
-  post_final = post_final:gsub(inject.layer_uniforms.pattern, function(capture)
-    local u = ""
-    for i = 1, maxLayers do
-      local A = "A_" .. tostring(i) 
-      local B = "B_" .. tostring(i)
-      u = u .. string.format(inject.layer_uniforms.replacement, A, A, A, A, A, A, A)
-      u = u .. string.format(inject.layer_uniforms.replacement, B, B, B, B, B, B, B)
-    end
-    u = u .. "\n" .. capture
-    return u
-  end)
-
-  -- Functions
-  post_final = post_final:gsub(inject.functions.pattern, inject.functions.replacement .. "\n%1", 1)
+  -- Blocks are injected in reverse dependency order
 
   -- Replace background
-  post_final = post_final:gsub(inject.replace_bg.pattern, inject.replace_bg.replacement, 1)
+  post_final = post_final:gsub(inject.replace_bg.pattern, "%1\n" .. inject.replace_bg.replacement, 1)
 
   -- Bank A
-  post_final = post_final:gsub(inject.bank_A.pattern, inject.bank_A.replacement  .. "\n%1", 1)
+  post_final = post_final:gsub(inject.bank_A.pattern, "%1\n" .. inject.bank_A.replacement, 1)
   post_final = post_final:gsub(inject.layers.pattern, function()
     local l = ""
     for i = 1, maxLayers do
@@ -297,7 +269,7 @@ local injectShaderCode = function()
   end)
 
   -- Bank B
-  post_final = post_final:gsub(inject.bank_B.pattern, inject.bank_B.replacement  .. "\n%1", 1)
+  post_final = post_final:gsub(inject.bank_B.pattern, "%1\n" .. inject.bank_B.replacement, 1)
   post_final = post_final:gsub(inject.layers.pattern, function()
     local l = ""
     for i = 1, maxLayers do
@@ -307,6 +279,34 @@ local injectShaderCode = function()
     l = l .. "\n"
     return l
   end)
+
+  -- Functions
+  post_final = post_final:gsub(inject.functions.pattern, "%1\n" .. inject.functions.replacement, 1)
+
+  -- Sky Uniforms
+  post_final = post_final:gsub(inject.sky_uniforms.pattern, function(capture)
+    local u = capture .. "\n"
+    local A = "A"
+    local B = "B"
+    u = u .. string.format(inject.sky_uniforms.replacement, A, A, A, A)
+    u = u .. string.format(inject.sky_uniforms.replacement, B, B, B, B)
+    return u
+  end)
+
+  -- Layer Uniforms
+  post_final = post_final:gsub(inject.layer_uniforms.pattern, function(capture)
+    local u = capture .. "\n"
+    for i = 1, maxLayers do
+      local A = "A_" .. tostring(i) 
+      local B = "B_" .. tostring(i)
+      u = u .. string.format(inject.layer_uniforms.replacement, A, A, A, A, A, A, A)
+      u = u .. string.format(inject.layer_uniforms.replacement, B, B, B, B, B, B, B)
+    end
+    return u
+  end)
+
+  -- Global Uniforms
+  post_final = post_final:gsub(inject.global_uniforms.pattern, "%1\n" .. inject.global_uniforms.replacement, 1)
 
   if DEBUUG_SHADER then print(post_final) end
 
